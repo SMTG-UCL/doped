@@ -93,11 +93,9 @@ def get_vasprun(vasprun_path, **kwargs):
     )  # Ignore POTCAR warnings when loading vasprun.xml
     # pymatgen assumes the default PBE with no way of changing this within get_vasprun())
     warnings.filterwarnings("ignore", message="No POTCAR file with matching TITEL fields")
-    if os.path.exists(vasprun_path):
-        vasprun = Vasprun(vasprun_path)
-    elif os.path.exists(vasprun_path + ".gz", **kwargs):
-        vasprun = Vasprun(vasprun_path + ".gz", **kwargs)
-    else:
+    try:
+        vasprun = Vasprun(find_archived_fname(vasprun_path), **kwargs)
+    except FileNotFoundError:
         raise FileNotFoundError(
             f"""I can't find a vasprun.xml(.gz) at {vasprun_path}(.gz).
                    You sure there's one there pal? I need it to parse the calculation results"""
@@ -107,13 +105,11 @@ def get_vasprun(vasprun_path, **kwargs):
 
 def get_locpot(locpot_path):
     """ Read the LOCPOT(.gz) file as a pymatgen Locpot object """
-    if os.path.exists(locpot_path):
-        locpot = Locpot.from_file(locpot_path)
-    elif os.path.exists(locpot_path + ".gz"):
-        locpot = Locpot.from_file(locpot_path + ".gz")
-    else:
+    try:
+        locpot = Locpot.from_file(find_archived_fname(locpot_path))
+    except FileNotFoundError:
         raise FileNotFoundError(
-            f"""I can't find a LOCPOT(.gz) at {locpot_path}(.gz).
+            f"""I can't find a LOCPOT(.gz/.xz/.bz/.lzma) at {locpot_path}(.gz/.xz/.bz/.lzma).
                    You sure there's one there pal? I need it to get the Freysoldt correction"""
         )
     return locpot
@@ -794,7 +790,7 @@ class PostProcess:
 
         def get_vr_and_check_locpot(fldr):
             vr_file = os.path.join(fldr, "vasprun.xml")
-            if not (os.path.exists(vr_file) or os.path.exists(vr_file + ".gz")):
+            if find_archived_fname(vr_file, raise_error=False) is None:
                 logger.warning("{} doesn't exit".format(vr_file))
                 error_msg = ": Failure, vasprun.xml doesn't exist."
                 return (None, error_msg)  # Further processing is not useful
@@ -813,7 +809,7 @@ class PostProcess:
 
             # Check if locpot exists
             locpot_file = os.path.join(fldr, "LOCPOT")
-            if not (os.path.exists(locpot_file) or os.path.exists(locpot_file + ".gz")):
+            if find_archived_fname(locpot_file, raise_error=False) is None:
                 logger.warning("{} doesn't exit".format(locpot_file))
                 error_msg = ": Failure, LOCPOT doesn't exist"
                 return (None, error_msg)  # Further processing is not useful
@@ -1070,3 +1066,17 @@ class PostProcess:
         output["gap"] = gap
 
         return output
+
+
+def find_archived_fname(fname, raise_error=True):
+    """Find a suitable filename, taking account of possible use of compression software"""
+    if os.path.exists(fname):
+        return fname
+    else:
+        # Check for archive files
+        for ext in [".gz", ".xz", ".bz", ".lzma"]:
+            if os.path.exists(fname + ext):
+                return fname
+    if raise_error:
+        raise FileNotFoundError
+    return None

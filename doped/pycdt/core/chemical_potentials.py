@@ -460,9 +460,13 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
 
     def __init__(self, **kwargs):
         """
+        Processing calculations results, from both folder or directly based on
+        passed `computed_entires`. 
         Args:
             bulk_ce: Pymatgen ComputedStructureEntry object for bulk entry
                 or supercell
+            computed_entries: pymatgne ComputedEntry objects to be included in the phase
+                diagram
             path_base (str): the base path where the 'PhaseDiagram' folder
                 exists defaults to the local folder
             sub_species (set): set of elemental species that are extrinsic
@@ -481,6 +485,7 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
         self.path_base = kwargs.get("path_base", ".")
         self.sub_species = kwargs.get("sub_species", set())
         self.entries = kwargs.get("entries", {})
+        self.computed_entries = kwargs.get("computed_entries",[])
         self.mapi_key = kwargs.get("mapi_key", None)
 
     def read_phase_diagram_and_chempots(self, full_sub_approach=False, include_mp_entries=True):
@@ -506,27 +511,29 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
 
         """
         pdfile = os.path.join(self.path_base, "PhaseDiagram")
+        has_pd_folder = False
         if not os.path.exists(pdfile):
+            has_pd_folder = True
             print("Phase diagram file does not exist at ", pdfile)
-            return
 
         # this is where we read computed entries into a list for parsing...
         # NOTE TO USER: If not running with VASP need to use another
         # pymatgen functionality for importing computed entries below...
-        personal_entry_list = []
-        for structfile in os.listdir(pdfile):
-            if os.path.exists(os.path.join(pdfile, structfile, "vasprun.xml")) or os.path.exists(
-                    os.path.join(pdfile, structfile, "vasprun.xml.gz")):
-                try:
-                    print("loading ", structfile)
-                    from doped.pycdt.utils.parse_calculations import get_vasprun
-                    vr = get_vasprun(os.path.join(pdfile, structfile,
-                                                                     "vasprun.xml"))
-                    entry_from_vr = vr.get_computed_entry()
-                    entry_from_vr.data.update({"Orig_Folder_Name": structfile})
-                    personal_entry_list.append(entry_from_vr)
-                except:
-                    print("Could not load ", structfile)
+        personal_entry_list = list(self.computed_entries)
+        if has_pd_folder:
+            for structfile in os.listdir(pdfile):
+                if os.path.exists(os.path.join(pdfile, structfile, "vasprun.xml")) or os.path.exists(
+                        os.path.join(pdfile, structfile, "vasprun.xml.gz")):
+                    try:
+                        print("loading ", structfile)
+                        from doped.pycdt.utils.parse_calculations import get_vasprun
+                        vr = get_vasprun(os.path.join(pdfile, structfile,
+                                                                        "vasprun.xml"))
+                        entry_from_vr = vr.get_computed_entry()
+                        entry_from_vr.data.update({"Orig_Folder_Name": structfile})
+                        personal_entry_list.append(entry_from_vr)
+                    except:
+                        print("Could not load ", structfile)
 
         # add bulk computed entry to phase diagram, and see if it is stable
         if not self.bulk_ce:
