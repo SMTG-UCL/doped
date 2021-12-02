@@ -1076,7 +1076,7 @@ def find_archived_fname(fname, raise_error=True):
         # Check for archive files
         for ext in [".gz", ".xz", ".bz", ".lzma"]:
             if os.path.exists(fname + ext):
-                return fname
+                return fname + ext
     if raise_error:
         raise FileNotFoundError
     return None
