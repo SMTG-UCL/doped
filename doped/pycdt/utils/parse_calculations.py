@@ -554,7 +554,7 @@ class SingleDefectParser:
         return bulk_outcar
 
     def get_stdrd_metadata(self):
-
+        """Try to standardise the metadata"""
         if not self.bulk_vr:
             path_to_bulk = self.defect_entry.parameters["bulk_path"]
             self.bulk_vr = get_vasprun(os.path.join(path_to_bulk, "vasprun.xml"))
@@ -606,10 +606,11 @@ class SingleDefectParser:
         self.defect_entry.parameters.update(
             {
                 "final_defect_structure": self.defect_vr.final_structure,
-                "initial_defect_structure": self.defect_vr.initial_structure,
                 "defect_energy": self.defect_vr.final_energy,
             }
         )
+        if "initial_defect_structure" not in self.defect_entry.parameters:
+                self.defect_entry.parameters['initial_defect_structure'] = self.defect_vr.initial_structure
 
         # grab defect energy and eigenvalue information for band filling and localization analysis
         eigenvalues = {
