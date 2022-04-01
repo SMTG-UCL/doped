@@ -23,7 +23,8 @@ import matplotlib.ticker as ticker
 from matplotlib import rc
 
 from tabulate import tabulate
-from pymatgen.analysis.defects.thermodynamics import DefectPhaseDiagram
+#from pymatgen.analysis.defects.thermodynamics import DefectPhaseDiagram
+from .phased import BetterDefectPhaseDiagram as DefectPhaseDiagram
 from pymatgen.util.string import latexify, unicodeify
 from doped import aide_murphy_correction
 
